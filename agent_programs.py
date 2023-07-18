@@ -18,6 +18,25 @@ w_env = int(DISPLAY_WIDTH/ TILE_SIZE)
 h_env = int(DISPLAY_HEIGHT/TILE_SIZE)
 environment_map = GridMap(w_env, h_env, None)
 
+def future_state(model, location, direction):
+    offset = {
+        'north' : (0, -1),
+        'south': (0, 1),
+        'west': (-1, 0),
+        'east': (1, 0)
+    }
+
+    cur_x, cur_y = location
+    new_x, new_y = (cur_x + offset[direction][0], cur_y + offset[direction][1])
+    try:
+        value = model.get_item_value(new_x, new_y)
+        new_location = (new_x, new_y)
+    except:
+        value = 'W'
+        new_location = None
+
+    return value, new_location
+
 # 2. Let's model an agent program accepting
 # an additional parameter search_function
 # This parameter is the search function to use to find
@@ -39,70 +58,115 @@ def search_behaviour(percepts, actuators, search_function):
     actions = [] # we start with an empty list of actions to perform for this step
 
     # get agent location
-    # agent_location = ... 
+    agent_location = percepts['location-sensor']
 
     # updating the map with the visited tile
     # set environment_map to 'X' at the present location (visited)
+    environment_map.set_item_value(agent_location[0], agent_location[1], 'X')
+
 
     # updating the map with the charging dock location
-    # dock_location = ...
+    dock_location = percepts['charging-dock-location-sensor']
     # set environment_map to 'C' at the charging dock location
-
+    environment_map.set_item_value(dock_location[0], dock_location[1], 'C')
+    
     # did the agent crash against a wall?
     # retrieve the current direction of the wheels from the actuators
+    cur_direction = actuators['wheels-direction']
+    
     # check if the bumper sensor for that direction detected a collision or not
-    # if so, get the location of the tile with the wall (the one towards the wheels' direction)
-    # and update the environment_map with 'W' in that location (if not out of boundaries)
+    if percepts['bumper-sensor-{0}'.format(cur_direction)] == True:
+        path_to_dock = []
+        path_to_unexplored = []
+        # if so, get the location of the tile with the wall (the one towards the wheels' direction)
+        # and update the environment_map with 'W' in that location (if not out of boundaries)
+        _, future_location = future_state(environment_map, agent_location, cur_direction)
+        if future_location is not None:
+            environment_map.set_item_value(future_location[0], future_location[1], 'W')
+
     
     # updating dirt in adjacent cells
     # for all the possible directions check if the dirt sensors detected dirt in the adjacent cells
     # if so, update the ones with dirt in the environment_map by setting their cell to 'D'
+    for direction in DIRECTIONS:
+        if percepts['dirt-sensor-{0}'.format(direction)] == True:
+            _, future_location = future_state(environment_map, agent_location, direction)
+            environment_map.set_item_value(future_location[0], future_location[1], 'D')
 
     # if the power is off, we start cleaning
+    if actuators['vacuum-power'] != 1:
+        actions.append('start-cleaning')
     
     # if we visited and cleaned the whole environment, we stop
     # To check that, you can use the method find_value of the GridMap
     # A fully explored and cleaned environment should not have any cell to None or 'D'
-    
+    if len(environment_map.find_value(None)) == 0 and len(environment_map.find_value('D')) == 0:
+        if actuators['vacuum-power'] == 1:
+            actions.append('stop-cleaning')
+        
     # if there is dirt on the current tile, activate the suction mechanism
     # otherwise, if there is no dirt and the suction mechanism is on, turn it off
     # to preserve the battery
+    if percepts['dirt-sensor-center'] == True:
+        actions.append('activate-suction-mechanism')
+    elif actuators['vacuum-power'] == 1:
+        actions.append('deactivate-suction-mechanism')
 
     # Now we can check if it is best to continue cleaning
     # or if it is best to go back to the charging dock
 
     # read the battery level
+    battery_level = percepts['battery-level']
+    next_action_direction = None
     # if the battery level is less than 50 (50%), then
+    if battery_level < 50:
 
-    # GOING TO THE CHARGING DOCK
-    # first check if there is a path to the dock (is path_to_dock empty?)
-    # if there is no path to the dock, we need to find one
-    # the search_function should return a goal_node (an instance of the class GraphNode)
-    # given the present agent location and a goal function:
-    # goal_node = search_function(agent_location, a_goal_function_for_charging_dock)
-    # If you have not implemented any goal function yet, for now you can use a lambda function
-    # always returning False: lambda node_state: False
-    # if the goal_node was found (not None/False), then we can generate the path to the goal
-    # with the method .get_path()
-    # We can set the value of path_to_dock to the found path
-    # and if now path_to_dock has at least one element, we retrieve the first item from the list
-    # with the method .pop(0). That's the next action movement to perform to head towards the goal
-    # so we add this action to the actions list
+        # GOING TO THE CHARGING DOCK
+        # first check if there is a path to the dock (is path_to_dock empty?)
+        # if there is no path to the dock, we need to find one
+        if len(path_to_dock) == 0:
+            # the search_function should return a goal_node (an instance of the class GraphNode)
+            # given the present agent location and a goal function:
+            goal_node = search_function(agent_location, is_charging_dock)
+            # If you have not implemented any goal function yet, for now you can use a lambda function
+            # always returning False: lambda node_state: False
 
+            # if the goal_node was found (not None/False), then we can generate the path to the goal
+            # with the method .get_path()
+            if goal_node != False:
+                path_to_dock, _ = goal_node.get_path()
+                # We can set the value of path_to_dock to the found path
+        
+        # and if now path_to_dock has at least one element, we retrieve the first item from the list
+        # with the method .pop(0). That's the next action movement to perform to head towards the goal
+        # so we add this action to the actions list
+        if len(path_to_dock) > 0:
+            next_action_direction = path_to_dock.pop(0)
     # ELSE, CONTINUE CLEANING
-    # first check if there is a path to an unexplored tile (is path_to_unexplored empty?)
-    # if there is no path to an unexplored tile, we need to find one
-    # the search_function should return a goal_node (an instance of the class GraphNode)
-    # given the present agent location and a goal function:
-    # goal_node = search_function(agent_location, a_goal_function_to_unexplored_tiles)
-    # if the goal_node was found (not None/False), then we can generate the path to the goal
-    # with the method .get_path()
-    # We can set the value of path_to_unexplored to the found path
-    # and if now path_to_unexplored has at least one element, we retrieve the first item from the list
-    # with the method .pop(0). That's the next action movement to perform to head towards the goal
-    # so we add this action to the actions list
+    else:
+        # first check if there is a path to an unexplored tile (is path_to_unexplored empty?)
+        if len(path_to_unexplored) == 0:
+            # if there is no path to an unexplored tile, we need to find one
+            # the search_function should return a goal_node (an instance of the class GraphNode)
+            # given the present agent location and a goal function:
+            goal_node = search_function(agent_location, is_unexplored)
+            # if the goal_node was found (not None/False), then we can generate the path to the goal
+            # with the method .get_path()
+            if goal_node != False:
+                # We can set the value of path_to_unexplored to the found path
+                path_to_unexplored, _ = goal_node.get_path()
+        # and if now path_to_unexplored has at least one element, we retrieve the first item from the list
+        # with the method .pop(0). That's the next action movement to perform to head towards the goal
+        # so we add this action to the actions list
+        if len(path_to_unexplored) > 0:
+            next_action_direction = path_to_unexplored.pop(0)
+    
+    if next_action_direction is not None:
+        actions.append(next_action_direction)
     
     return actions
+
+my_mock_up_goal_function = lambda node_state:False
 
 # 3. Implementing the search strategies
 # First, we need two ingredients:

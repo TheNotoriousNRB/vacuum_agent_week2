@@ -9,4 +9,6 @@ class VacuumDockAgent(VacuumAgent):
 
     def add_all_sensors(self):
         super().add_all_sensors()
-        self.add_sensor('charging-dock-location-sensor', (0,0), lambda v: isinstance (v, tuple) and isinstance (v[0], int) and isinstance (v[0], int))
+        self.add_sensor('charging-dock-location-sensor', 
+                        (0,0), 
+                        lambda v: isinstance (v, tuple) and isinstance (v[0], int) and isinstance (v[0], int))
