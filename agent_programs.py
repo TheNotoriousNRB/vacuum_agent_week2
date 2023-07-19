@@ -166,8 +166,6 @@ def search_behaviour(percepts, actuators, search_function):
     
     return actions
 
-my_mock_up_goal_function = lambda node_state:False
-
 # 3. Implementing the search strategies
 # First, we need two ingredients:
 # - A function to expand nodes from a current node
@@ -181,24 +179,42 @@ def expand(node):
     # for every node we have four potential successors
     # based on the following possible actions:
     # 'change-direction-north', 'change-direction-south', 'change-direction-west', 'change-direction-east'
-
+    actions = {
+        'change-direction-north': (0, -1),
+        'change-direction-south': (0, 1),
+        'change-direction-east': (1, 0),
+        'change-direction-west': (-1, 0)
+    }
     # this function must add all the possible successors of node to this list
     successors = []
 
     # for each action, we must check if the successor is:
-    # 1. Within the boundaries of the environment map
-    # 2. The environment_map at the successor location was not set as wall yet ('W')
     # If the action lead to any of the two possible scenarios, the successor will not be added to the expansion 
-    
-    # to create an instance of GraphNode:
-    # successor = GraphNode(successor_state, node, action, cost)
-    # successor_state is the representation of the state of the successor node, e.g. the x,y coordinates
-    # the second parameter is the parent node we have as input to this function
-    # action is the action that generated the successor via this expansion
-    # cost is the cost to be in the state of the successor node, in this scenario all nodes have the same uniform cost (i.e. 1)
-    
-    # after creating an instance of the successor, add it to the successors list
-    
+    cur_state = node.get_state()
+    for action, offset in actions.items():
+        # 1. Within the boundaries of the environment map
+        new_state = (cur_state[0] + offset[0], cur_state[1] + cur_state[1])
+        try:
+            item_on_map = environment_map.get_item_value(new_state[0], new_state[1])
+        
+        # 2. The environment_map at the successor location was not set as wall yet ('W')
+        except:
+            #Hit the wall
+            item_on_map = 'W'
+        
+        if item_on_map == 'W':
+            continue
+        
+        # to create an instance of GraphNode:
+        # successor_state is the representation of the state of the successor node, e.g. the x,y coordinates
+        # the second parameter is the parent node we have as input to this function
+        # action is the action that generated the successor via this expansion
+        # cost is the cost to be in the state of the successor node, in this scenario all nodes have the same uniform cost (i.e. 1)
+        cost = 1
+        successor = GraphNode(new_state, node, action, cost)
+        
+        # after creating an instance of the successor, add it to the successors list
+        successors.append(successor)
     return successors
 
 # Goal functions
