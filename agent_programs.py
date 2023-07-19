@@ -226,15 +226,27 @@ def expand(node):
 # 2. A function telling us if the state is the location of the charging dock
 def is_unexplored(node_state):
     global environment_map
-    
+    try:
+        map_item_value = environment_map.get_item_value(node_state[0], node_state[1])
+    except:
+        map_item_value = 'W'
+
     # if the environment_map at the coordinates in node_state is dirty or unexplored, return True
     # else, return False
+    return True if map_item_value in ['D', None] else False
+    
 
 def is_charging_dock(node_state):
     global environment_map
-    
+    try:
+        map_item_value = environment_map.get_item_value(node_state[0], node_state[1])
+    except:
+        map_item_value = 'W'
+        
     # if the environment_map at the coordinates in node_state is the location of the charging dock, return True
     # else, return False
+    return True if map_item_value in ['C'] else False
+    
 
 
 # Now we can implement the functions for the search strategies
