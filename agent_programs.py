@@ -319,7 +319,54 @@ def breadth_first_search(start_coords, goal_function):
     # you will simply need to re-use the depth-first search code
     # and change a single line of code to use a FIFO queue instead of
     # a LIFO one
+    # create a GraphNode for the initial state
+    # with the starting coordinates as its state
+    # An initial state node does not have parent node (None)
+    # and action that generated it (None) and its cost can be set to 0
+    initial_state = GraphNode(start_coords, None, None, 0)
+
+    # check if the state for the initial node is a goal state
+    # if so, return it
+    if goal_function(initial_state.get_state()):
+        return initial_state
+    
+    # if not, we need to create a frontier
+    # for a depth-first algorithm, the frontier can be represented
+    # with a LIFO queue. In Python we have the library queue 
+    # including different types of queue data structures, including LifoQueue
+    frontier = Queue()
+
+    # we need to input the initial state node to the frontier
+    # you can use the method .put(node), with node being the node to insert into the queue
+    frontier.put(initial_state)
+    # we also need to set a list of all reached states
+    reached = [initial_state.get_state()]
+    # and append the state of the initial node to the reached list
+    # you can use the .append method
+
+    # now we start a while loop until we have nodes in the frontier
+    while frontier.qsize() > 0:
+        # in this loop, we first get the next node from the frontier queue
+        # we can do so with the method .get()
+        cur_node = frontier.get()
+        # then we get its successors by expanding the node with the function expand
+        successors = expand(cur_node)
+        # for every successor found, we check if their states are goal states with the goal_function
+        for successor in successors:
+             # if they are, we return the successor
+            if goal_function(successor.get_state()):
+                return successor
+            
+            # else, we check if the state of the successor is not in the reached list yet
+            successor_state = successor.get_state()
+                # if it is not there yet, we add the state of the successor to the reached list
+            if successor_state not in reached:
+                reached.append(successor_state)
+                # and we insert the successor node to the frontier (using .put again)
+                frontier.put(successor)
         
+    # if nothing was returned so far, we return False (or None if you prefer)
+    # to suggest that no solution was found for this search
     return False
 
 # For the uniform cost search, the process is the same as per

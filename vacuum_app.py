@@ -12,7 +12,7 @@ if __name__ == "__main__":
     # a desired search strategies
     # To change the search strategy, change the third parameter for the search_beahviour function
     # executed by the lambda function
-    agent_program = lambda percepts, actuators: search_behaviour(percepts, actuators, depth_first_search)
+    agent_program = lambda percepts, actuators: search_behaviour(percepts, actuators, breadth_first_search)
     
     # creating the vacuum agent with a charging dock
     agent = VacuumDockAgent(agent_program)
